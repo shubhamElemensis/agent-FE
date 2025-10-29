@@ -1,87 +1,41 @@
-import ChatBot from "./components/ChatBot";
-import "./App.css";
+import React from "react";
 
-function App() {
-  // Optional: Custom message handler for API integration
-  const handleSendMessage = async (message: string): Promise<string> => {
-    // Example: Replace with your actual API call
-    // const response = await fetch('/api/chat', {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify({ message }),
-    // });
-    // const data = await response.json();
-    // return data.reply;
-
-    // For now, use the default mock response
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve(`You said: "${message}". I'm here to help!`);
-      }, 1000);
-    });
-  };
-
+export default function App() {
+  const [isOpen, setIsOpen] = React.useState(false);
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      {/* Main Content */}
-      <div className="container mx-auto px-4 py-16">
-        <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-5xl font-bold text-gray-900 mb-6">
-            Welcome to ChatBot Widget
-          </h1>
-          <p className="text-xl text-gray-600 mb-8">
-            A modern, feature-rich chatbot UI built with React and TypeScript
-          </p>
-
-          <div className="grid md:grid-cols-3 gap-6 mt-12">
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <div className="text-4xl mb-4">⚡</div>
-              <h3 className="text-lg font-semibold mb-2">Fast & Responsive</h3>
-              <p className="text-gray-600">
-                Built with React and optimized for performance
-              </p>
-            </div>
-
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <div className="text-4xl mb-4">🎨</div>
-              <h3 className="text-lg font-semibold mb-2">Customizable</h3>
-              <p className="text-gray-600">
-                Easy to customize colors, position, and behavior
-              </p>
-            </div>
-
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <div className="text-4xl mb-4">♿</div>
-              <h3 className="text-lg font-semibold mb-2">Accessible</h3>
-              <p className="text-gray-600">
-                Built with accessibility in mind (ARIA labels, keyboard nav)
-              </p>
-            </div>
+    <div className="m-2 bottom-2 right-6 fixed">
+      {!isOpen && (
+        <div
+          className="bg-gray-950 rounded-full size-14 flex items-center justify-center hover:cursor-pointer"
+          onClick={() => setIsOpen(true)}
+        >
+          <div>💬</div>
+        </div>
+      )}
+      {isOpen && (
+        <div className="w-80 h-96 bg-white shadow-lg rounded-lg flex flex-col">
+          <div className="bg-blue-600 text-white p-4 rounded-t-lg flex justify-between items-center">
+            <div className="font-bold">Chatbot</div>
+            <button
+              className="text-white font-bold"
+              onClick={() => setIsOpen(false)}
+            >
+              ✖
+            </button>
           </div>
-
-          <div className="mt-12 bg-blue-50 border border-blue-200 rounded-lg p-6">
-            <h2 className="text-2xl font-semibold text-blue-900 mb-3">
-              Try the Chatbot
-            </h2>
-            <p className="text-blue-700">
-              Click the chat button in the bottom-right corner to start a conversation!
-            </p>
+          <div className="flex-grow p-4 overflow-y-auto">
+            {/* Chat content goes here */}
+            <p>Hello! How can I assist you today?</p>
+          </div>
+          <div className="p-4 border-t">
+            <input
+              type="text"
+              className="w-full border rounded px-2 py-1"
+              placeholder="Type your message..."
+            />
           </div>
         </div>
-      </div>
-
-      {/* ChatBot Widget */}
-      <ChatBot
-        botName="AI Assistant"
-        initialMessage="Hello! I'm your AI assistant. How can I help you today?"
-        placeholder="Ask me anything..."
-        position="bottom-right"
-        showTypingIndicator={true}
-        showTimestamps={true}
-        onSendMessage={handleSendMessage}
-      />
+      )}
     </div>
   );
 }
-
-export default App;

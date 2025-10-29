@@ -1,7 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import Chatbot from "./components/Chatbot";
 import "./index.css";
+import App from "./App";
 
 // Widget initialization function
 function initChatbot(elementId: string = "chatbot-widget") {
@@ -15,7 +15,7 @@ function initChatbot(elementId: string = "chatbot-widget") {
   const root = ReactDOM.createRoot(container);
   root.render(
     <React.StrictMode>
-      <Chatbot />
+      <App />
     </React.StrictMode>
   );
 }
