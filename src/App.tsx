@@ -10,7 +10,11 @@ export default function App() {
           className="bg-teal-600 rounded-full size-14 flex items-center justify-center hover:cursor-pointer"
           onClick={() => setIsOpen(true)}
         >
-          <img src="/logo/mini-logo.svg" alt="mini-logo" className="size-6" />
+          <img
+            src="https://jl-pricing.vercel.app/images/mini-logo.svg"
+            alt="mini-logo"
+            className="size-6"
+          />
         </div>
       )}
       {isOpen && (
