@@ -39,7 +39,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
 
     // Call the API to get the assistant's response
     try {
-      const response = await fetch("http://localhost:8000/chat", {
+      const response = await fetch("https://agent-be.vercel.app/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
