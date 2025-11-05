@@ -1,4 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
+import { getContentFromChunk } from "@/lib/utils";
 import { createContext, useContext, useState, type ReactNode } from "react";
 
 export interface Message {
@@ -10,16 +11,31 @@ export interface Message {
 interface AIContextType {
   messages: Message[];
   handleOnSubmit: (message: Message) => Promise<void>;
+  isLoading: boolean;
 }
 
 const AIContext = createContext<AIContextType | undefined>(undefined);
 
 export function AIProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<Message[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  console.log("Current messages in AIProvider:", messages);
 
   const handleOnSubmit = async (message: Message) => {
     const updatedMessages = [...messages, message];
     setMessages(updatedMessages);
+    setIsLoading(true);
+
+    // Add a placeholder message for the assistant's response
+    const assistantMessageIndex = updatedMessages.length;
+    setMessages((prev) => [
+      ...prev,
+      {
+        type: "text",
+        content: "",
+        role: "assistant",
+      },
+    ]);
 
     // Call the API to get the assistant's response
     try {
@@ -32,29 +48,63 @@ export function AIProvider({ children }: { children: ReactNode }) {
       });
 
       if (!response.ok) {
-        setMessages((prev) => [
-          ...prev,
-          {
+        setMessages((prev) => {
+          const newMessages = [...prev];
+          newMessages[assistantMessageIndex] = {
             type: "text",
             content: "Error: Unable to get response from assistant.",
             role: "assistant",
-          },
-        ]);
+          };
+          return newMessages;
+        });
         return;
       }
 
-      const data = await response.json();
-      setMessages((prevMessages) => [
-        ...prevMessages,
-        { type: "text", content: data.response, role: "assistant" },
-      ]);
+      const data = await response.body?.getReader();
+      let accumulatedContent = "";
+
+      while (true) {
+        const { done, value } = await data!.read();
+        if (done) break;
+
+        const chunk = new TextDecoder().decode(value);
+        const content = getContentFromChunk(chunk);
+
+        if (content) {
+          accumulatedContent += content;
+          console.log("Received assistant message chunk:", content);
+
+          // Update the message in real-time with accumulated content
+          setMessages((prev) => {
+            const newMessages = [...prev];
+            newMessages[assistantMessageIndex] = {
+              type: "text",
+              content: accumulatedContent,
+              role: "assistant",
+            };
+            return newMessages;
+          });
+        }
+      }
+
+      setIsLoading(false);
     } catch (error) {
       console.error("Error fetching assistant response:", error);
+      setMessages((prev) => {
+        const newMessages = [...prev];
+        newMessages[assistantMessageIndex] = {
+          type: "text",
+          content: "Error: Failed to connect to the assistant.",
+          role: "assistant",
+        };
+        return newMessages;
+      });
+      setIsLoading(false);
     }
   };
 
   return (
-    <AIContext.Provider value={{ messages, handleOnSubmit }}>
+    <AIContext.Provider value={{ messages, handleOnSubmit, isLoading }}>
       {children}
     </AIContext.Provider>
   );

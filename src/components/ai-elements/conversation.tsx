@@ -1,6 +1,6 @@
 import { useAI } from "@/contexts/AIContext";
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 
 interface ImageModalProps {
   src: string;
@@ -42,6 +42,27 @@ function ImageModal({ src, alt, onClose }: ImageModalProps) {
           alt={alt}
           className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
         />
+      </div>
+    </div>
+  );
+}
+
+function TypingIndicator() {
+  return (
+    <div className="flex items-center">
+      <div className="flex space-x-1">
+        <div
+          className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"
+          style={{ animationDelay: "0ms" }}
+        ></div>
+        <div
+          className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"
+          style={{ animationDelay: "150ms" }}
+        ></div>
+        <div
+          className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"
+          style={{ animationDelay: "300ms" }}
+        ></div>
       </div>
     </div>
   );
@@ -199,7 +220,15 @@ function BotMessage({ text }: { text: string }) {
 }
 
 export default function Conversation() {
-  const { messages } = useAI();
+  const { messages, isLoading } = useAI();
+  const conversationEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when messages change or loading state changes
+  useEffect(() => {
+    conversationEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isLoading]);
+
+  // console.log("Messages in Conversation:", messages);
   return (
     <div className="p-4 flex-1 overflow-y-auto space-y-4">
       {messages.map((msg, index) => (
@@ -218,12 +247,15 @@ export default function Conversation() {
           >
             {msg.role === "user" ? (
               <p className="text-sm leading-relaxed">{msg.content}</p>
+            ) : msg.content === "" && isLoading ? (
+              <TypingIndicator />
             ) : (
               <BotMessage text={msg.content} />
             )}
           </div>
         </div>
       ))}
+      <div ref={conversationEndRef} />
     </div>
   );
 }
