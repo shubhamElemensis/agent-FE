@@ -1,55 +1,16 @@
+import { useAI } from "@/contexts/AIContext";
 import { useState } from "react";
 import { FaCircleArrowUp } from "react-icons/fa6";
 
-interface PromptInputProps {
-  setMessages: React.Dispatch<
-    React.SetStateAction<
-      {
-        text: string;
-        sender: "user" | "bot";
-      }[]
-    >
-  >;
-}
-
-export default function PromptInput({ setMessages }: PromptInputProps) {
+export default function PromptInput() {
   const [inputValue, setInputValue] = useState<string>("");
-
-  const get_assistant_response = async (user_input: string) => {
-    try {
-      const response = await fetch("http://localhost:8000/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ user_input }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Network response was not ok");
-      }
-
-      const data = await response.json();
-      return data.response;
-    } catch (error) {
-      console.error("Error fetching assistant response:", error);
-      return "Sorry, I couldn't process your request.";
-    }
-  };
+  const { handleOnSubmit } = useAI();
 
   const handleSubmit = async () => {
     if (inputValue.trim()) {
-      setMessages((prevMessages) => [
-        ...prevMessages,
-        { text: inputValue, sender: "user" },
-      ]);
       setInputValue("");
 
-      const assistantResponse = await get_assistant_response(inputValue);
-      setMessages((prevMessages) => [
-        ...prevMessages,
-        { text: assistantResponse, sender: "bot" },
-      ]);
+      await handleOnSubmit({ type: "text", content: inputValue, role: "user" });
     }
   };
 

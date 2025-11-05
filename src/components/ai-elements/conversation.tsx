@@ -1,12 +1,6 @@
+import { useAI } from "@/contexts/AIContext";
 import type { ReactNode } from "react";
 import { useState } from "react";
-
-interface ConversationProps {
-  messages: {
-    text: string;
-    sender: "user" | "bot";
-  }[];
-}
 
 interface ImageModalProps {
   src: string;
@@ -204,27 +198,28 @@ function BotMessage({ text }: { text: string }) {
   );
 }
 
-export default function Conversation({ messages }: ConversationProps) {
+export default function Conversation() {
+  const { messages } = useAI();
   return (
     <div className="p-4 flex-1 overflow-y-auto space-y-4">
       {messages.map((msg, index) => (
         <div
           key={index}
           className={`flex ${
-            msg.sender === "user" ? "justify-end" : "justify-start"
+            msg.role === "user" ? "justify-end" : "justify-start"
           }`}
         >
           <div
             className={`max-w-[85%] rounded-2xl px-4 py-3 ${
-              msg.sender === "user"
+              msg.role === "user"
                 ? "bg-blue-600 text-white"
                 : "bg-slate-50 border border-slate-200"
             }`}
           >
-            {msg.sender === "user" ? (
-              <p className="text-sm leading-relaxed">{msg.text}</p>
+            {msg.role === "user" ? (
+              <p className="text-sm leading-relaxed">{msg.content}</p>
             ) : (
-              <BotMessage text={msg.text} />
+              <BotMessage text={msg.content} />
             )}
           </div>
         </div>
