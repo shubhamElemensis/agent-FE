@@ -19,6 +19,7 @@ const AIContext = createContext<AIContextType | undefined>(undefined);
 export function AIProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const baseurl = import.meta.env.VITE_API_URL || "http://localhost:8000";
   console.log("Current messages in AIProvider:", messages);
 
   const handleOnSubmit = async (message: Message) => {
@@ -39,7 +40,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
 
     // Call the API to get the assistant's response
     try {
-      const response = await fetch("https://agent-be.vercel.app/chat", {
+      const response = await fetch(`${baseurl}/chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
