@@ -19,7 +19,7 @@ const AIContext = createContext<AIContextType | undefined>(undefined);
 export function AIProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  console.log("Current messages in AIProvider:", messages);
+  const baseURL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
   const handleOnSubmit = async (message: Message) => {
     const updatedMessages = [...messages, message];
@@ -39,7 +39,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
 
     // Call the API to get the assistant's response
     try {
-      const response = await fetch(`https://chatbot-api.juniorlogs.com/chat`, {
+      const response = await fetch(`${baseURL}/chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
