@@ -1,16 +1,25 @@
 import { useAI } from "@/contexts/AIContext";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { FaCircleArrowUp } from "react-icons/fa6";
 
 export default function PromptInput() {
   const [inputValue, setInputValue] = useState<string>("");
   const { handleOnSubmit } = useAI();
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Auto-focus input when component mounts
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
 
   const handleSubmit = async () => {
     if (inputValue.trim()) {
       setInputValue("");
 
       await handleOnSubmit({ type: "text", content: inputValue, role: "user" });
+
+      // Re-focus input after submission
+      inputRef.current?.focus();
     }
   };
 
@@ -18,6 +27,7 @@ export default function PromptInput() {
     <div>
       <form action={handleSubmit} className="p-2 border-t flex space-x-2">
         <input
+          ref={inputRef}
           type="text"
           placeholder="What would you like to know?"
           value={inputValue}

@@ -77,7 +77,7 @@ function BotMessage({ text }: { text: string }) {
   // Parse the markdown-like text into structured content
   const lines = text.split("\n");
   const elements: ReactNode[] = [];
-  let currentList: string[] = [];
+  let currentList: ReactNode[] = [];
   let listKey = 0;
 
   const flushList = () => {
@@ -91,8 +91,9 @@ function BotMessage({ text }: { text: string }) {
             <li
               key={idx}
               className="text-slate-700 leading-relaxed pl-1"
-              dangerouslySetInnerHTML={{ __html: item }}
-            />
+            >
+              {item}
+            </li>
           ))}
         </ol>
       );
@@ -100,43 +101,39 @@ function BotMessage({ text }: { text: string }) {
     }
   };
 
-  lines.forEach((line, idx) => {
-    const trimmedLine = line.trim();
+  // Helper function to parse inline content (bold, links, images)
+  const parseInlineContent = (content: string, keyPrefix: string) => {
+    const result: ReactNode[] = [];
+    let lastIndex = 0;
 
-    if (!trimmedLine) {
-      flushList();
-      return;
-    }
+    // Find all markdown links [text](url)
+    const linkRegex = /\[(.+?)\]\((.+?)\)/g;
+    let match;
 
-    // Handle numbered lists
-    const listMatch = trimmedLine.match(/^(\d+)\.\s+(.+)$/);
-    if (listMatch) {
-      const content = listMatch[2];
-      // Parse bold text within list items
-      const formattedContent = content.replace(
-        /\*\*(.+?)\*\*/g,
-        '<strong class="font-semibold text-slate-900">$1</strong>'
-      );
-      currentList.push(formattedContent);
-      return;
-    }
+    while ((match = linkRegex.exec(content)) !== null) {
+      // Add text before the link
+      if (match.index > lastIndex) {
+        const textBefore = content.substring(lastIndex, match.index);
+        const formattedText = textBefore.replace(
+          /\*\*(.+?)\*\*/g,
+          '<strong class="font-semibold text-slate-900">$1</strong>'
+        );
+        result.push(
+          <span key={`${keyPrefix}-text-${lastIndex}`} dangerouslySetInnerHTML={{ __html: formattedText }} />
+        );
+      }
 
-    // Flush any pending list before processing other elements
-    flushList();
+      const linkText = match[1];
+      const url = match[2];
 
-    // Handle links (View Screenshot or other links)
-    const linkMatch = trimmedLine.match(/^\[(.+?)\]\((.+?)\)$/);
-    if (linkMatch) {
-      const [, linkText, url] = linkMatch;
-
-      // Check if it's a screenshot/image link
+      // Check if it's an image/screenshot link
       const isImage =
         linkText.toLowerCase().includes("screenshot") ||
         url.match(/\.(jpg|jpeg|png|gif|webp)$/i);
 
       if (isImage) {
-        elements.push(
-          <div key={`link-${idx}`} className="my-2">
+        result.push(
+          <div key={`${keyPrefix}-img-${match.index}`} className="my-2">
             <button
               onClick={() => setSelectedImage({ src: url, alt: linkText })}
               className="block w-full text-left"
@@ -151,18 +148,69 @@ function BotMessage({ text }: { text: string }) {
           </div>
         );
       } else {
-        elements.push(
+        result.push(
           <a
-            key={`link-${idx}`}
+            key={`${keyPrefix}-link-${match.index}`}
             href={url}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 hover:underline text-sm my-1"
+            className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 hover:underline text-sm"
           >
-            <span>{linkText}</span>
+            {linkText}
           </a>
         );
       }
+
+      lastIndex = match.index + match[0].length;
+    }
+
+    // Add remaining text after last link
+    if (lastIndex < content.length) {
+      const textAfter = content.substring(lastIndex);
+      const formattedText = textAfter.replace(
+        /\*\*(.+?)\*\*/g,
+        '<strong class="font-semibold text-slate-900">$1</strong>'
+      );
+      result.push(
+        <span key={`${keyPrefix}-text-${lastIndex}`} dangerouslySetInnerHTML={{ __html: formattedText }} />
+      );
+    }
+
+    return result;
+  };
+
+  lines.forEach((line, idx) => {
+    const trimmedLine = line.trim();
+
+    if (!trimmedLine) {
+      flushList();
+      return;
+    }
+
+    // Handle numbered lists
+    const listMatch = trimmedLine.match(/^(\d+)\.\s+(.+)$/);
+    if (listMatch) {
+      const content = listMatch[2];
+      const parsedContent = parseInlineContent(content, `list-${idx}`);
+      currentList.push(<>{parsedContent}</>);
+      return;
+    }
+
+    // Flush any pending list before processing other elements
+    flushList();
+
+    // Handle bullet points (*, -, +)
+    const bulletMatch = trimmedLine.match(/^[*\-+]\s+(.+)$/);
+    if (bulletMatch) {
+      const content = bulletMatch[1];
+      elements.push(
+        <div key={`bullet-${idx}`} className="flex gap-2 my-2">
+          <span className="text-slate-700 mt-1">•</span>
+          <div className="text-slate-700 leading-relaxed flex-1">
+            {parseInlineContent(content, `bullet-${idx}`)}
+          </div>
+        </div>
+      );
       return;
     }
 
@@ -188,17 +236,12 @@ function BotMessage({ text }: { text: string }) {
       return;
     }
 
-    // Handle regular paragraphs with bold text
-    const formattedLine = trimmedLine.replace(
-      /\*\*(.+?)\*\*/g,
-      '<strong class="font-semibold text-slate-900">$1</strong>'
-    );
+    // Handle regular paragraphs
+    const parsedContent = parseInlineContent(trimmedLine, `para-${idx}`);
     elements.push(
-      <p
-        key={`para-${idx}`}
-        className="text-slate-700 leading-relaxed my-2"
-        dangerouslySetInnerHTML={{ __html: formattedLine }}
-      />
+      <p key={`para-${idx}`} className="text-slate-700 leading-relaxed my-2">
+        {parsedContent}
+      </p>
     );
   });
 
@@ -219,8 +262,14 @@ function BotMessage({ text }: { text: string }) {
   );
 }
 
+const SAMPLE_QUESTIONS = [
+  "How do I submit RS7 Return?",
+  "Fresh Booking Rule ECE",
+  "How to process refund payments?",
+];
+
 export default function Conversation() {
-  const { messages, isLoading } = useAI();
+  const { messages, isLoading, handleOnSubmit } = useAI();
   const conversationEndRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom when messages change or loading state changes
@@ -228,33 +277,62 @@ export default function Conversation() {
     conversationEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
 
+  const handleSampleQuestionClick = (question: string) => {
+    handleOnSubmit({
+      type: "text",
+      content: question,
+      role: "user",
+    });
+  };
+
   // console.log("Messages in Conversation:", messages);
   return (
     <div className="p-4 flex-1 overflow-y-auto space-y-4">
-      {messages.map((msg, index) => (
-        <div
-          key={index}
-          className={`flex ${
-            msg.role === "user" ? "justify-end" : "justify-start"
-          }`}
-        >
-          <div
-            className={`max-w-[85%] rounded-2xl px-4 py-3 ${
-              msg.role === "user"
-                ? "bg-blue-600 text-white"
-                : "bg-slate-50 border border-slate-200"
-            }`}
-          >
-            {msg.role === "user" ? (
-              <p className="text-sm leading-relaxed">{msg.content}</p>
-            ) : msg.content === "" && isLoading ? (
-              <TypingIndicator />
-            ) : (
-              <BotMessage text={msg.content} />
-            )}
+      {messages.length === 0 ? (
+        <div className="flex items-center justify-center h-full">
+          <div className="space-y-3 max-w-md w-full">
+            <h3 className="text-center text-slate-600 text-sm font-medium mb-4">
+              Try asking:
+            </h3>
+            {SAMPLE_QUESTIONS.map((question, index) => (
+              <button
+                key={index}
+                onClick={() => handleSampleQuestionClick(question)}
+                className="w-full text-left px-4 py-3 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300 transition-colors text-sm text-slate-700 hover:text-slate-900"
+              >
+                {question}
+              </button>
+            ))}
           </div>
         </div>
-      ))}
+      ) : (
+        <>
+          {messages.map((msg, index) => (
+            <div
+              key={index}
+              className={`flex ${
+                msg.role === "user" ? "justify-end" : "justify-start"
+              }`}
+            >
+              <div
+                className={`max-w-[85%] rounded-2xl px-4 py-3 ${
+                  msg.role === "user"
+                    ? "bg-blue-600 text-white"
+                    : "bg-slate-50 border border-slate-200"
+                }`}
+              >
+                {msg.role === "user" ? (
+                  <p className="text-sm leading-relaxed">{msg.content}</p>
+                ) : msg.content === "" && isLoading ? (
+                  <TypingIndicator />
+                ) : (
+                  <BotMessage text={msg.content} />
+                )}
+              </div>
+            </div>
+          ))}
+        </>
+      )}
       <div ref={conversationEndRef} />
     </div>
   );
