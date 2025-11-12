@@ -62,19 +62,50 @@ export function AIProvider({ children }: { children: ReactNode }) {
 
       const data = await response.body?.getReader();
       let accumulatedContent = "";
+      let buffer = ""; // Buffer to handle incomplete JSON objects
 
       while (true) {
         const { done, value } = await data!.read();
         if (done) break;
 
         const chunk = new TextDecoder().decode(value);
-        const content = getContentFromChunk(chunk);
+        buffer += chunk;
 
+        // Split by newlines to get complete JSON objects
+        const lines = buffer.split('\n');
+
+        // Keep the last line in buffer (might be incomplete)
+        buffer = lines.pop() || "";
+
+        // Process complete lines
+        for (const line of lines) {
+          if (!line.trim()) continue;
+
+          const content = getContentFromChunk(line);
+
+          if (content) {
+            accumulatedContent += content;
+            console.log("Received assistant message chunk:", content);
+
+            // Update the message in real-time with accumulated content
+            setMessages((prev) => {
+              const newMessages = [...prev];
+              newMessages[assistantMessageIndex] = {
+                type: "text",
+                content: accumulatedContent,
+                role: "assistant",
+              };
+              return newMessages;
+            });
+          }
+        }
+      }
+
+      // Process any remaining buffered content
+      if (buffer.trim()) {
+        const content = getContentFromChunk(buffer);
         if (content) {
           accumulatedContent += content;
-          console.log("Received assistant message chunk:", content);
-
-          // Update the message in real-time with accumulated content
           setMessages((prev) => {
             const newMessages = [...prev];
             newMessages[assistantMessageIndex] = {
