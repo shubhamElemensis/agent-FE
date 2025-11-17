@@ -41,7 +41,7 @@ export default function SatisfactionSurvey({
                 : "scale-100 hover:scale-105"
             }`}
           >
-            <span className="text-5xl transition-all duration-300 hover:scale-125">
+            <span className="text-5xl transition-all duration-300 hover:scale-125 hover:cursor-pointer">
               😊
             </span>
             <span
@@ -63,7 +63,7 @@ export default function SatisfactionSurvey({
                 : "scale-100 hover:scale-105"
             }`}
           >
-            <span className="text-5xl transition-all duration-300 hover:scale-125">
+            <span className="text-5xl transition-all duration-300 hover:scale-125 hover:cursor-pointer">
               😐
             </span>
             <span
@@ -85,7 +85,7 @@ export default function SatisfactionSurvey({
                 : "scale-100 hover:scale-105"
             }`}
           >
-            <span className="text-5xl transition-all duration-300 hover:scale-125">
+            <span className="text-5xl transition-all duration-300 hover:scale-125 hover:cursor-pointer">
               🙁
             </span>
             <span
@@ -104,14 +104,14 @@ export default function SatisfactionSurvey({
           <button
             onClick={handleSkip}
             disabled={isSubmitting}
-            className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:cursor-pointer"
           >
             Skip
           </button>
           <button
             onClick={handleSubmit}
             disabled={!selectedRating || isSubmitting}
-            className="flex-1 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:cursor-pointer"
           >
             {isSubmitting ? "Submitting..." : "Submit"}
           </button>

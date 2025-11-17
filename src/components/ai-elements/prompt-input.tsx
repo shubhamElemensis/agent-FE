@@ -67,7 +67,7 @@ export default function PromptInput() {
 
         <button
           type="button"
-          className="p-1.5 hover:bg-gray-100 rounded-full transition-colors flex-shrink-0"
+          className="p-1.5 hover:bg-gray-100 rounded-full transition-colors flex-shrink-0 "
           aria-label="Attach file"
         >
           <IoMdAttach size={20} className="text-gray-600" />
@@ -79,7 +79,7 @@ export default function PromptInput() {
           disabled={!inputValue.trim()}
           className={`p-2 rounded-full transition-all flex-shrink-0 ${
             inputValue.trim()
-              ? "bg-teal-700 hover:bg-teal-800"
+              ? "bg-teal-700 hover:bg-teal-800 hover:cursor-pointer"
               : "bg-gray-200 cursor-not-allowed"
           }`}
           aria-label="Send message"

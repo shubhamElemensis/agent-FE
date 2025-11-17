@@ -3,15 +3,17 @@ import { getContentFromChunk } from "@/lib/utils";
 import { createContext, useContext, useState, type ReactNode } from "react";
 
 export interface Message {
-  type: "text";
+  type: "text" | "tool_calls";
   content: string;
   role: "user" | "assistant";
+  isComplete?: boolean;
 }
 
 interface AIContextType {
   messages: Message[];
   handleOnSubmit: (message: Message) => Promise<void>;
   isLoading: boolean;
+  handleFeedback: (messageIndex: number, isRelevant: boolean) => Promise<void>;
 }
 
 const AIContext = createContext<AIContextType | undefined>(undefined);
@@ -34,6 +36,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
         type: "text",
         content: "",
         role: "assistant",
+        isComplete: false,
       },
     ]);
 
@@ -63,6 +66,8 @@ export function AIProvider({ children }: { children: ReactNode }) {
       const data = await response.body?.getReader();
       let accumulatedContent = "";
       let buffer = ""; // Buffer to handle incomplete JSON objects
+      let messageType: "text" | "tool_calls" = "text";
+      let hasToolCalls = false; // Track if we've seen a tool_calls message
 
       while (true) {
         const { done, value } = await data!.read();
@@ -81,19 +86,33 @@ export function AIProvider({ children }: { children: ReactNode }) {
         for (const line of lines) {
           if (!line.trim()) continue;
 
-          const content = getContentFromChunk(line);
+          const chunkData = getContentFromChunk(line);
 
-          if (content) {
-            accumulatedContent += content;
-            console.log("Received assistant message chunk:", content);
+          // Track if we've seen a tool_calls message
+          if (chunkData.type === "tool_calls") {
+            hasToolCalls = true;
+            console.log("Detected tool_calls message");
+          }
+
+          // For content chunks after tool_calls, keep the tool_calls type
+          if (chunkData.content) {
+            if (hasToolCalls) {
+              messageType = "tool_calls";
+            } else if (chunkData.type) {
+              messageType = chunkData.type;
+            }
+
+            accumulatedContent += chunkData.content;
+            console.log("Received assistant message chunk:", chunkData.content, "Type:", messageType);
 
             // Update the message in real-time with accumulated content
             setMessages((prev) => {
               const newMessages = [...prev];
               newMessages[assistantMessageIndex] = {
-                type: "text",
+                type: messageType,
                 content: accumulatedContent,
                 role: "assistant",
+                isComplete: false,
               };
               return newMessages;
             });
@@ -103,20 +122,26 @@ export function AIProvider({ children }: { children: ReactNode }) {
 
       // Process any remaining buffered content
       if (buffer.trim()) {
-        const content = getContentFromChunk(buffer);
-        if (content) {
-          accumulatedContent += content;
-          setMessages((prev) => {
-            const newMessages = [...prev];
-            newMessages[assistantMessageIndex] = {
-              type: "text",
-              content: accumulatedContent,
-              role: "assistant",
-            };
-            return newMessages;
-          });
+        const chunkData = getContentFromChunk(buffer);
+        if (chunkData.content) {
+          accumulatedContent += chunkData.content;
+          if (chunkData.type) {
+            messageType = chunkData.type;
+          }
         }
       }
+
+      // Mark the message as complete
+      setMessages((prev) => {
+        const newMessages = [...prev];
+        newMessages[assistantMessageIndex] = {
+          type: messageType,
+          content: accumulatedContent,
+          role: "assistant",
+          isComplete: true,
+        };
+        return newMessages;
+      });
 
       setIsLoading(false);
     } catch (error) {
@@ -134,8 +159,27 @@ export function AIProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const handleFeedback = async (messageIndex: number, isRelevant: boolean) => {
+    try {
+      await fetch(`${baseURL}/feedback/response-relevance`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          messageIndex,
+          isRelevant,
+          timestamp: new Date().toISOString(),
+        }),
+      });
+      console.log("Feedback submitted:", { messageIndex, isRelevant });
+    } catch (error) {
+      console.error("Error submitting feedback:", error);
+    }
+  };
+
   return (
-    <AIContext.Provider value={{ messages, handleOnSubmit, isLoading }}>
+    <AIContext.Provider value={{ messages, handleOnSubmit, isLoading, handleFeedback }}>
       {children}
     </AIContext.Provider>
   );

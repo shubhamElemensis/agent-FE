@@ -5,7 +5,12 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function getContentFromChunk(chunk: string): string | null {
+interface ChunkData {
+  content: string | null;
+  type: "text" | "tool_calls" | null;
+}
+
+export function getContentFromChunk(chunk: string): ChunkData {
   let jsonStr = chunk.trim();
 
   // Handle SSE format (data: {...})
@@ -15,21 +20,24 @@ export function getContentFromChunk(chunk: string): string | null {
 
   // Skip empty chunks
   if (!jsonStr) {
-    return null;
+    return { content: null, type: null };
   }
 
   try {
     const parsedData = JSON.parse(jsonStr);
 
-    // Only extract content from "text" type messages
-    if (parsedData.type === "text" && parsedData.content) {
-      return parsedData.content;
+    // Check if this is a text or tool_calls message
+    if (parsedData.type === "text" || parsedData.type === "tool_calls") {
+      return {
+        content: parsedData.content || null,
+        type: parsedData.type,
+      };
     }
 
     // Ignore "start" and "end" messages
-    return null;
+    return { content: null, type: null };
   } catch (e) {
     console.error("Error parsing JSON from chunk:", e, "Chunk:", chunk);
-    return null;
+    return { content: null, type: null };
   }
 }

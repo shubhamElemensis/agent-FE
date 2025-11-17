@@ -2,6 +2,7 @@ import { useAI } from "@/contexts/AIContext";
 import type { ReactNode } from "react";
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import ResponseFeedback from "./response-feedback";
 
 interface ImageModalProps {
   src: string;
@@ -56,12 +57,12 @@ function ImageWithSkeleton({
 function ImageModal({ src, alt, onClose }: ImageModalProps) {
   return createPortal(
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 "
       onClick={onClose}
     >
       <button
         onClick={onClose}
-        className="absolute top-4 right-4 text-white hover:text-gray-300 transition-colors z-10"
+        className="absolute top-4 right-4 text-white hover:text-gray-300 transition-colors z-10 hover:cursor-pointer"
         aria-label="Close"
       >
         <svg
@@ -119,6 +120,21 @@ function BotMessage({ text }: { text: string }) {
     src: string;
     alt: string;
   } | null>(null);
+  const [expandedSources, setExpandedSources] = useState<Set<number>>(
+    new Set()
+  );
+
+  const toggleSource = (index: number) => {
+    setExpandedSources((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(index)) {
+        newSet.delete(index);
+      } else {
+        newSet.add(index);
+      }
+      return newSet;
+    });
+  };
 
   // Parse the markdown-like text into structured content
   const lines = text.split("\n");
@@ -270,22 +286,44 @@ function BotMessage({ text }: { text: string }) {
     // Handle source/reference links
     if (trimmedLine.startsWith("📚 Source:")) {
       const sourceText = trimmedLine.replace("📚 Source:", "").trim();
+      const isExpanded = expandedSources.has(idx);
+
       elements.push(
         <div
           key={`source-${idx}`}
           className="mt-3 pt-2 border-t border-gray-200"
         >
-          <a
-            href={sourceText}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 text-[12px] text-gray-600 hover:text-gray-800 break-all overflow-wrap-anywhere"
+          <button
+            onClick={() => toggleSource(idx)}
+            className="inline-flex items-center gap-2 text-[12px] text-gray-600 hover:text-gray-800 focus:outline-none hover:cursor-pointer"
           >
-            <span className="text-sm flex-shrink-0">📚</span>
-            <span className="hover:underline break-all">
-              Source: {sourceText}
-            </span>
-          </a>
+            <span className="hover:underline">View Source</span>
+            <svg
+              className={`w-3 h-3 transition-transform ${
+                isExpanded ? "rotate-180" : ""
+              }`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+          {isExpanded && (
+            <a
+              href={sourceText}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block mt-2 text-[11px] text-blue-600 hover:text-blue-700 hover:underline break-all"
+            >
+              {sourceText}
+            </a>
+          )}
         </div>
       );
       return;
@@ -327,7 +365,7 @@ const SAMPLE_QUESTIONS = [
 ];
 
 export default function Conversation() {
-  const { messages, isLoading, handleOnSubmit } = useAI();
+  const { messages, isLoading, handleOnSubmit, handleFeedback } = useAI();
   const conversationEndRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom when messages change or loading state changes
@@ -348,20 +386,13 @@ export default function Conversation() {
     <div className="p-4 flex-1 overflow-y-auto space-y-3 bg-gray-50">
       {messages.length === 0 ? (
         <div className="flex flex-col h-full">
-          {/* Initial Bot Response */}
-          <div className="bg-[#E5E7EB] rounded-2xl rounded-tl-none px-4 py-3 mb-4 max-w-[85%]">
-            <p className="text-[14px] text-gray-900 font-normal leading-normal">
-              You can ask questions here. How can I help?
-            </p>
-          </div>
-
           {/* Suggested Questions */}
           <div className="space-y-2 mt-auto">
             {SAMPLE_QUESTIONS.map((question, index) => (
               <button
                 key={index}
                 onClick={() => handleSampleQuestionClick(question)}
-                className="w-full flex items-center justify-between px-4 py-3 rounded-lg bg-white hover:bg-gray-50 transition-colors text-[14px] text-gray-900 font-medium shadow-sm border border-gray-100"
+                className="w-full flex items-center justify-between px-4 py-3 rounded-lg bg-white hover:cursor-pointer hover:bg-gray-50 transition-colors text-[14px] text-gray-900 font-medium shadow-sm border border-gray-100"
               >
                 <span>{question}</span>
                 <svg
@@ -384,29 +415,43 @@ export default function Conversation() {
       ) : (
         <>
           {messages.map((msg, index) => (
-            <div
-              key={index}
-              className={`flex ${
-                msg.role === "user" ? "justify-end" : "justify-start"
-              }`}
-            >
+            <div key={index} className="space-y-2">
               <div
-                className={`max-w-[95%] rounded-2xl px-4 py-3 break-words overflow-wrap-anywhere ${
-                  msg.role === "user"
-                    ? "bg-teal-700 text-white rounded-tr-none"
-                    : "bg-[#E5E7EB] text-gray-900 rounded-tl-none"
+                className={`flex ${
+                  msg.role === "user" ? "justify-end" : "justify-start"
                 }`}
               >
-                {msg.role === "user" ? (
-                  <p className="text-[14px] font-normal leading-normal">
-                    {msg.content}
-                  </p>
-                ) : msg.content === "" && isLoading ? (
-                  <TypingIndicator />
-                ) : (
-                  <BotMessage text={msg.content} />
-                )}
+                <div
+                  className={`max-w-[95%] rounded-2xl px-4 py-3 break-words overflow-wrap-anywhere ${
+                    msg.role === "user"
+                      ? "bg-teal-700 text-white rounded-tr-none"
+                      : "bg-[#E5E7EB] text-gray-900 rounded-tl-none"
+                  }`}
+                >
+                  {msg.role === "user" ? (
+                    <p className="text-[14px] font-normal leading-normal">
+                      {msg.content}
+                    </p>
+                  ) : msg.content === "" && isLoading ? (
+                    <TypingIndicator />
+                  ) : (
+                    <BotMessage text={msg.content} />
+                  )}
+                </div>
               </div>
+              {/* Show feedback outside the message bubble */}
+              {msg.role === "assistant" &&
+                msg.type === "tool_calls" &&
+                msg.isComplete && (
+                  <div className="flex justify-start">
+                    <div className="max-w-[95%]">
+                      <ResponseFeedback
+                        messageIndex={index}
+                        onFeedback={handleFeedback}
+                      />
+                    </div>
+                  </div>
+                )}
             </div>
           ))}
         </>
